@@ -19,6 +19,7 @@ desc?: string
 }
 
 let userMFA: { enabled: boolean; secret?: string; backup?: string[] } = { enabled: false }
+let scheduled: any[] = []
 
 const accounts: Account[] = [
 { id: 'acc-1', name: 'Checking', number: 'XXXX-1234', balance: 5400 },
@@ -68,7 +69,22 @@ verifyMFA: async (code: string) => {
 if (!userMFA?.enabled) throw new Error('MFA not enabled')
 return code === userMFA.secret?.slice(-4)
 },
-disableMFA: async () => { userMFA = { enabled: false }; return true }
+disableMFA: async () => { userMFA = { enabled: false }; return true },
+addScheduled: async (job: any) => {
+const item = { id: uuid(), ...job }
+scheduled.push(item)
+return item
+},
+listScheduled: async () => scheduled,
+runDue: async () => {
+// execute any payment with runAt <= now (demo: treat all as due)
+const due = scheduled.splice(0, scheduled.length)
+for (const j of due) {
+try { await api.transfer(j.from, j.to, j.amount) }
+catch(e){ /* ignore in demo */ }
+}
+return due
+}
 }
 
 
