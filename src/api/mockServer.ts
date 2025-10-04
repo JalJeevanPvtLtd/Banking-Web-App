@@ -18,6 +18,7 @@ date: string
 desc?: string
 }
 
+let userMFA: { enabled: boolean; secret?: string; backup?: string[] } = { enabled: false }
 
 const accounts: Account[] = [
 { id: 'acc-1', name: 'Checking', number: 'XXXX-1234', balance: 5400 },
@@ -57,7 +58,17 @@ if (to) to.balance += amount
 const tx = { id: uuid(), from: fromId, to: toId, amount, date: new Date().toISOString() }
 transactions.unshift(tx)
 return tx
-}
+},
+enableMFA: async () => {
+const secret = Math.random().toString(36).slice(2, 10)
+userMFA = { enabled: true, secret, backup: [secret.slice(0,4)+'-A', secret.slice(4)+'-B'] }
+return { secret, backup: userMFA.backup }
+},
+verifyMFA: async (code: string) => {
+if (!userMFA?.enabled) throw new Error('MFA not enabled')
+return code === userMFA.secret?.slice(-4)
+},
+disableMFA: async () => { userMFA = { enabled: false }; return true }
 }
 
 
