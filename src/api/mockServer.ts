@@ -20,12 +20,26 @@ desc?: string
 
 let userMFA: { enabled: boolean; secret?: string; backup?: string[] } = { enabled: false }
 let scheduled: any[] = []
+let audit: any[] = []
+let sessionRole = 'user' // change to 'admin' to demo
+
+const listeners: ((msg: any) => void)[] = []
+export const notifications = {
+subscribe: (cb: (msg: any) => void) => { listeners.push(cb); return () => { const i = listeners.indexOf(cb); if (i>=0) listeners.splice(i,1); } },
+push: (msg: any) => { listeners.forEach(l => l(msg)) }
+}
 
 const accounts: Account[] = [
 { id: 'acc-1', name: 'Checking', number: 'XXXX-1234', balance: 5400 },
 { id: 'acc-2', name: 'Savings', number: 'XXXX-5678', balance: 12000 }
 ]
 
+const oldTransfer = api.transfer
+api.transfer = async (from,to,amount) => {
+const tx = await oldTransfer(from,to,amount)
+api.logAudit({ type: 'transfer', from, to, amount, id: tx.id })
+return tx
+}
 
 let transactions: Transaction[] = [
 { id: uuid(), from: 'acc-1', to: 'Store', amount: 30, date: new Date().toISOString(), desc: 'Groceries' },
@@ -84,13 +98,7 @@ try { await api.transfer(j.from, j.to, j.amount) }
 catch(e){ /* ignore in demo */ }
 }
 return due
-}
-}
-
-
-// Simple event emitter for notifications
-const listeners: ((msg: any) => void)[] = []
-export const notifications = {
-subscribe: (cb: (msg: any) => void) => { listeners.push(cb); return () => { const i = listeners.indexOf(cb); if (i>=0) listeners.splice(i,1); } },
-push: (msg: any) => { listeners.forEach(l => l(msg)) }
+},
+  getAudit: async () => audit,
+logAudit: (entry:any) => { audit.unshift({ ...entry, time: new Date().toISOString() }) }
 }
