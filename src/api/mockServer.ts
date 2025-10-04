@@ -67,3 +67,21 @@ export const notifications = {
 subscribe: (cb: (msg: any) => void) => { listeners.push(cb); return () => { const i = listeners.indexOf(cb); if (i>=0) listeners.splice(i,1); } },
 push: (msg: any) => { listeners.forEach(l => l(msg)) }
 }
+
+// add field to user session
+let userMFA: { enabled: boolean; secret?: string; backup?: string[] } = { enabled: false }
+
+
+export const api = {
+// ... existing
+enableMFA: async () => {
+const secret = Math.random().toString(36).slice(2, 10)
+userMFA = { enabled: true, secret, backup: [secret.slice(0,4)+'-A', secret.slice(4)+'-B'] }
+return { secret, backup: userMFA.backup }
+},
+verifyMFA: async (code: string) => {
+if (!userMFA?.enabled) throw new Error('MFA not enabled')
+return code === userMFA.secret?.slice(-4)
+},
+disableMFA: async () => { userMFA = { enabled: false }; return true }
+}
